@@ -13,7 +13,7 @@ Configuration is read from the environment:
 Install dependencies and run the app locally (listens of port 3000)
 ```
 npm install
-npm start server
+npm run server
 ```
 
 Then call the service with the Federation ID as a part parameter to perform SSO towards the Salesforce Service Provider. We require that Federation ID is set as the identity used and a Federation ID is set on the User records in Salesforce. 
@@ -24,7 +24,7 @@ http://localhost:3000/tom.brady@example.com
 ```
 
 ## Generate certificates ##
-OpenSSL commands to generate a private key without a password and a certificate in PEM format.
+OpenSSL commands to generate a private key without a password and a certificate in PEM format. Specify the key length to use i.e. `2048`, `3072` or `4096`.
 ```
 openssl genrsa -des3 -out rootca.key 4096
 openssl rsa -in rootca.key -out rootca_no_password.key

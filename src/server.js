@@ -2,6 +2,16 @@ const express = require("express");
 const { buildAssertionInfo, cleanupPEMCertificate } = require("./saml-utils.js");
 require("dotenv").config();
 
+// compose base options
+const baseOptions = {
+    key: Buffer.from(process.env.SAML_PRIVATE_KEY, "base64").toString(),
+    cert: cleanupPEMCertificate(Buffer.from(process.env.SAML_CERTIFICATE, "base64").toString()),
+    issuer: process.env.SAML_ISSUER,
+    orgId: process.env.SAML_ORGID,
+    entityId: process.env.SAML_ENTITY_ID,
+    loginUrl: process.env.SAML_LOGIN_URL,
+};
+
 const app = express();
 app.get("/:federationId", (req, res) => {
     // ensure we got a federation ID
@@ -9,16 +19,10 @@ app.get("/:federationId", (req, res) => {
     console.log(`FederationId: ${req.params.federationId}`);
     if (req.params.federationId.indexOf("@") < 0) return res.send(404);
 
-    // create options
-    const options = {
-        key: Buffer.from(process.env.SAML_PRIVATE_KEY, "base64").toString(),
-        cert: cleanupPEMCertificate(Buffer.from(process.env.SAML_CERTIFICATE, "base64").toString()),
-        issuer: process.env.SAML_ISSUER,
-        federationId: req.params.federationId,
-        orgId: process.env.SAML_ORGID,
-        entityId: process.env.SAML_ENTITY_ID,
-        loginUrl: process.env.SAML_LOGIN_URL,
-    };
+    // create options from base options
+    const options = Object.assign({
+        federationId: req.params.federationId
+    }, baseOptions);
 
     // get assertion info incl. a signed SAML assertion
     const assertionInfo = buildAssertionInfo(options);
