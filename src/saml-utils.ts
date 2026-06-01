@@ -45,9 +45,9 @@ export const signXml = (options: AssertionInput, xml: string, nodename: string) 
     sign.addReference(
         `//*[local-name(.)='${nodename}']`,
         ["http://www.w3.org/2000/09/xmldsig#enveloped-signature", "http://www.w3.org/2001/10/xml-exc-c14n#"],
-        options.digestSHA256 ? "http://www.w3.org/2001/04/xmlenc#sha256" : "http://www.w3.org/2000/09/xmldsig#sha1"
+        options.digestSHA256 !== false ? "http://www.w3.org/2001/04/xmlenc#sha256" : "http://www.w3.org/2000/09/xmldsig#sha1"
     );
-    sign.signatureAlgorithm = options.signatureSHA256
+    sign.signatureAlgorithm = options.signatureSHA256 !== false
         ? "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
         : "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
     sign.signingKey = options.key;
@@ -88,6 +88,7 @@ export const buildAssertion = (options: AssertionInput): BuildAssertionOutput =>
     const timestamps = getTimestamps(options);
 
     // build assertion
+    const acr = options.authnContextClassRef || "urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified";
     let assertion = `<saml2:Assertion xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" ID="${uuid()}" IssueInstant="${
         timestamps.now
     }" Version="2.0"><saml2:Issuer>${
@@ -106,7 +107,19 @@ export const buildAssertion = (options: AssertionInput): BuildAssertionOutput =>
         options.entityId
     }</saml2:Audience></saml2:AudienceRestriction></saml2:Conditions><saml2:AuthnStatement AuthnInstant="${
         timestamps.now
-    }"><saml2:AuthnContext><saml2:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified</saml2:AuthnContextClassRef></saml2:AuthnContext></saml2:AuthnStatement></saml2:Assertion>`;
+    }">`;
+    if (options.includeAcr !== false) {
+        assertion += `<saml2:AuthnContext><saml2:AuthnContextClassRef>${acr}</saml2:AuthnContextClassRef></saml2:AuthnContext>`;
+    }
+    assertion += `</saml2:AuthnStatement>`;
+    if (options.amrValues && options.amrValues.length > 0) {
+        assertion += `<saml2:AttributeStatement><saml2:Attribute Name="http://schemas.microsoft.com/claims/authnmethodsreferences" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri">`;
+        for (const amr of options.amrValues) {
+            assertion += `<saml2:AttributeValue>${amr.replace(/[<>&"]/g, "")}</saml2:AttributeValue>`;
+        }
+        assertion += `</saml2:Attribute></saml2:AttributeStatement>`;
+    }
+    assertion += `</saml2:Assertion>`;
 
     // sign
     const signedAssertion = signXml(options, assertion, "Assertion");
@@ -214,6 +227,9 @@ export type AssertionInput = {
     key: Buffer; // key used to sign the assertion
     cert: Buffer; // the certificate matching the key
     inResponseTo?: string;  // if response is to an AuthnRequest add the InReponseTo attribute
+    includeAcr?: boolean; // whether to include AuthnContextClassRef (defaults to true)
+    authnContextClassRef?: string; // override the AuthnContextClassRef value
+    amrValues?: string[]; // AMR values to include as AttributeStatement
 };
 
 type SamlTimestamps = {
