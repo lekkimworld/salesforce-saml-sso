@@ -153,7 +153,8 @@ app.get("/admin", (_req, res) => {
   <label for="federationId">IdP-Initiated Login</label>
   <div style="display: flex; gap: 8px;">
     <input type="text" id="federationId" value="${process.env.FEDERATION_ID || 'tom.brady@example.com'}" placeholder="tom.brady@example.com">
-    <button onclick="initiateLogin()" style="white-space: nowrap;">Login</button>
+    <button onclick="initiateLoginSameTab()" style="white-space: nowrap;">Login</button>
+    <button onclick="initiateLogin()" style="white-space: nowrap;">Login (new tab)</button>
     <button onclick="generateOnly()" style="white-space: nowrap;">Generate Only</button>
   </div>
 </div>
@@ -296,6 +297,15 @@ function saveConfig() {
   }).catch(err => {
     showStatus("Failed to save: " + err.message, "error");
   });
+}
+
+function initiateLoginSameTab() {
+  const fedId = document.getElementById("federationId").value.trim();
+  if (!fedId || fedId.indexOf("@") < 0) {
+    showStatus("Enter a valid federation ID (must contain @)", "error");
+    return;
+  }
+  window.location.href = "/" + encodeURIComponent(fedId);
 }
 
 function initiateLogin() {
